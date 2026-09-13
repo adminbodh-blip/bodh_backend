@@ -8,7 +8,7 @@ import random
 DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://postgres:8Dv8H5EqQc9s9A4r@db.uhnarkmghbebahlaotxk.supabase.co:5432/postgres")
 engine = create_engine(DATABASE_URL, echo=False)
 
-app = FastAPI(title="JEE Secure CBT Engine")
+app = FastAPI(title="JEE Secure CBT Engine",debug=True)
 
 app.add_middleware(
     CORSMiddleware,
