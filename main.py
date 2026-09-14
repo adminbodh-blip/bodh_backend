@@ -5,7 +5,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import SQLModel, Field, Session, create_engine, select
 import random
 
-DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://postgres:8Dv8H5EqQc9s9A4r@db.uhnarkmghbebahlaotxk.supabase.co:5432/postgres")
+
+DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://postgres:V7337mgdMDtB2l8c@db.uhnarkmghbebahlaotxk.supabase.co:5432/postgres")
 engine = create_engine(DATABASE_URL, echo=False)
 
 app = FastAPI(title="JEE Secure CBT Engine",debug=True)
@@ -44,6 +45,7 @@ class QuestionDB(SQLModel, table=True):
     negative_marks: int
     has_diagram: bool
     diagram_url: str
+    
 
 def get_session():
     with Session(engine) as session:
@@ -66,6 +68,7 @@ class SanitizedQuestion(SQLModel):
     diagram_url: str
     positive_marks: int
     negative_marks: int
+    source_tag: Optional[str] = None
 
 class TestPayload(SQLModel):
     title: str
@@ -78,22 +81,40 @@ class SubmissionPayload(SQLModel):
 # --- API Endpoints ---
 
 @app.get("/api/exam/guest-test", response_model=TestPayload)
-def get_guest_test(subject: str, session: Session = Depends(get_session)):
-    """Free 30-minute quick test (15 questions, single subject)."""
+def get_guest_test(
+    subject: str, 
+    target_marks: int = 50, 
+    session: Session = Depends(get_session)
+):
+    """Random questions across any past year until target marks are reached."""
     valid_subjects = ["Physics", "Chemistry", "Math"]
     matched_subject = next((s for s in valid_subjects if s.lower() == subject.lower()), None)
     if not matched_subject:
         raise HTTPException(status_code=400, detail="Invalid subject selection.")
 
-    questions = session.exec(
-        select(QuestionDB).where(QuestionDB.subject == matched_subject)
-    ).all()
+    # Join QuestionDB with ExamPaperDB to pull paper title and year metadata
+    statement = (
+        select(QuestionDB, ExamPaperDB)
+        .join(ExamPaperDB, QuestionDB.paper_id == ExamPaperDB.id)
+        .where(QuestionDB.subject == matched_subject)
+    )
+    all_pairs = session.exec(statement).all()
 
-    if not questions:
+    if not all_pairs:
         raise HTTPException(status_code=404, detail="No questions found for this subject.")
 
-    selected_qs = random.sample(questions, min(len(questions), 15))
-    
+    # Shuffle question pool randomly across all years
+    random.shuffle(all_pairs)
+
+    # Accumulate questions until target_marks is met
+    accumulated_marks = 0
+    selected_pairs = []
+    for q, paper in all_pairs:
+        selected_pairs.append((q, paper))
+        accumulated_marks += q.positive_marks
+        if accumulated_marks >= target_marks:
+            break
+
     sanitized = [
         SanitizedQuestion(
             id=q.id,
@@ -110,16 +131,18 @@ def get_guest_test(subject: str, session: Session = Depends(get_session)):
             has_diagram=q.has_diagram,
             diagram_url=q.diagram_url,
             positive_marks=q.positive_marks,
-            negative_marks=q.negative_marks
+            negative_marks=q.negative_marks,
+            source_tag=f"{paper.paper_title}"
         )
-        for idx, q in enumerate(selected_qs)
+        for idx, (q, paper) in enumerate(selected_pairs)
     ]
 
     return TestPayload(
-        title=f"Quick Practice: {matched_subject} (30 Mins)",
+        title=f"Practice: {matched_subject} (~{accumulated_marks} Marks)",
         duration_seconds=30 * 60,
         questions=sanitized
     )
+
 
 @app.get("/api/exam/full-test", response_model=TestPayload)
 def get_full_test(year: int, paper_number: int = 1, subject: Optional[str] = "All", session: Session = Depends(get_session)):
@@ -156,7 +179,8 @@ def get_full_test(year: int, paper_number: int = 1, subject: Optional[str] = "Al
             has_diagram=q.has_diagram,
             diagram_url=q.diagram_url,
             positive_marks=q.positive_marks,
-            negative_marks=q.negative_marks
+            negative_marks=q.negative_marks,
+            source_tag=f"{paper.paper_title}"
         )
         for q in questions
     ]
