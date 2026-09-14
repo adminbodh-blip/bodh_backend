@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>All-India JEE CBT Simulator</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- KaTeX core CSS & JS (Correct dependency order) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/contrib/mhchem.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/contrib/auto-render.min.js"></script>
+
+  <style>
+    .katex-display {
+      margin: 0.5em 0;
+      overflow-x: auto;
+      overflow-y: hidden;
+    }
+
+    /* Anti-Scraping / Content Protection */
+    body {
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+    }
+
+    @media print {
+      body {
+        display: none !important;
+      }
+    }
+  </style>
+</head>
+
+<body class="bg-slate-50 text-slate-800 font-sans h-screen w-screen overflow-hidden" oncontextmenu="return false;">
+
+  <!-- ========================================== -->
+  <!-- 1. HOMEPAGE VIEW                           -->
+  <!-- ========================================== -->
+  <div id="homeView"
+    class="h-full w-full overflow-y-auto flex flex-col items-center justify-center p-6 bg-gradient-to-br from-slate-50 to-slate-100 relative">
+
+    <!-- Auth Bar -->
+    <div class="absolute top-0 right-0 p-6">
+      <div id="loggedOutUI">
+        <button onclick="mockLogin()"
+          class="flex items-center gap-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs px-4 py-2 rounded-lg shadow-sm transition">
+          Sign In with Google
+        </button>
+      </div>
+      <div id="loggedInUI"
+        class="hidden items-center gap-3 bg-white border border-slate-200 px-3 py-1.5 rounded-full shadow-sm">
+        <span id="userName" class="text-xs font-bold text-slate-700">Student</span>
+        <button onclick="mockLogout()"
+          class="text-[10px] text-slate-400 hover:text-red-500 font-bold ml-1">Logout</button>
+      </div>
+    </div>
+
+    <div class="max-w-xl w-full bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
+      <div class="bg-slate-900 px-8 py-8 text-center relative">
+        <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 to-purple-500"></div>
+        <span
+          class="bg-indigo-600 text-white text-[10px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full mb-2 inline-block">Free
+          Portal</span>
+        <h1 class="text-2xl font-black text-white">JEE Exam Simulator</h1>
+        <p class="text-slate-400 text-xs mt-1">Official NTA interface, LaTeX formulas, and instant score analysis.</p>
+      </div>
+
+      <div class="p-8 space-y-5">
+        <!-- Guest-Allowed Selector -->
+        <div>
+          <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Subject</label>
+          <select id="configSubject"
+            class="w-full bg-slate-50 border border-slate-300 text-slate-700 rounded-lg px-3 py-2.5 text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-500">
+            <option value="Physics">Physics</option>
+            <option value="Chemistry">Chemistry</option>
+            <option value="Math">Math</option>
+            <option value="All" id="optAllSubjects" disabled>Full Paper (All Subjects) - Login Required</option>
+          </select>
+        </div>
+
+        <!-- Locked Selectors for Unauthenticated Users -->
+        <div id="lockedConfigNotice"
+          class="bg-indigo-50/60 border border-indigo-100 rounded-lg p-3 text-xs text-indigo-900">
+          🔒 <b>Guest Mode:</b> 30-minute quick practice. Sign in to unlock full 3-hour papers and past-year filters.
+        </div>
+
+        <div id="advancedFilters" class="space-y-4 opacity-40 pointer-events-none transition">
+          <div>
+            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Target Year</label>
+            <select id="configYear"
+              class="w-full bg-slate-50 border border-slate-300 text-slate-700 rounded-lg px-3 py-2 text-sm outline-none">
+              <option value="2024">2024</option>
+              <option value="2023">2023</option>
+              <option value="2022">2022</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Paper</label>
+            <select id="configPaperNum"
+              class="w-full bg-slate-50 border border-slate-300 text-slate-700 rounded-lg px-3 py-2 text-sm outline-none">
+              <option value="1">Paper 1</option>
+              <option value="2">Paper 2</option>
+            </select>
+          </div>
+        </div>
+
+        <button onclick="handleStartTest()" id="startBtn"
+          class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-base py-3.5 rounded-xl shadow-lg shadow-indigo-100 transition">
+          Start Free Practice (30 Mins)
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- 2. CBT TEST VIEW                           -->
+  <!-- ========================================== -->
+  <div id="testView" class="hidden h-full w-full flex-col select-none bg-slate-100 relative">
+
+    <!-- Watermark Layer -->
+    <div id="watermark"
+      class="pointer-events-none absolute inset-0 z-50 flex items-center justify-center opacity-[0.03] text-4xl font-black rotate-[-25deg] uppercase">
+      JEE CBT Candidate
+    </div>
+
+    <!-- Header -->
+    <header class="bg-slate-900 text-white px-6 py-3 flex justify-between items-center shadow-md flex-shrink-0">
+      <div class="flex items-center gap-3">
+        <div class="bg-indigo-600 font-black text-xs px-2 py-1 rounded">CBT</div>
+        <h1 id="examTitle" class="text-xs font-bold leading-none">Exam</h1>
+      </div>
+      <div class="flex items-center gap-4">
+        <div class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1 flex items-center gap-2">
+          <span class="text-[10px] text-slate-400 uppercase font-semibold">Time:</span>
+          <span id="timerDisplay" class="font-mono text-emerald-400 font-bold text-sm">30:00</span>
+        </div>
+        <button onclick="submitExam()"
+          class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow">
+          Submit
+        </button>
+      </div>
+    </header>
+
+    <main class="flex-grow flex flex-col md:flex-row overflow-hidden">
+      <section class="flex-grow flex flex-col bg-white overflow-y-auto p-6 border-r border-slate-200">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+          <div class="flex items-center gap-2">
+            <span id="qNumberBadge" class="bg-slate-900 text-white font-bold text-xs px-2 py-0.5 rounded">Q1</span>
+            <span id="qTypeBadge"
+              class="text-[10px] font-semibold uppercase bg-slate-100 text-slate-600 px-2 py-0.5 rounded border">Single
+              Correct</span>
+          </div>
+          <div id="markingSchemeBadge" class="text-xs font-bold text-indigo-600">+3 / -1</div>
+        </div>
+
+        <div id="questionText" class="text-slate-800 text-sm leading-relaxed mb-4"></div>
+
+        <div id="diagramContainer" class="hidden mb-4 flex justify-center">
+          <img id="diagramImage" src="" alt="Diagram"
+            class="max-h-64 object-contain border border-slate-200 rounded-lg p-2 bg-white">
+        </div>
+
+        <div id="interactionArea" class="mt-auto pt-4 space-y-2.5"></div>
+
+        <div class="border-t border-slate-200 pt-3 mt-4 flex justify-between">
+          <button onclick="clearResponse()"
+            class="bg-slate-100 text-slate-600 text-xs font-bold px-3 py-1.5 rounded-lg">Clear</button>
+          <div class="flex gap-2">
+            <button onclick="navigateQuestion(-1)"
+              class="bg-slate-200 text-slate-800 text-xs font-bold px-3 py-1.5 rounded-lg">Prev</button>
+            <button onclick="navigateQuestion(1)"
+              class="bg-indigo-600 text-white text-xs font-bold px-4 py-1.5 rounded-lg shadow">Save & Next</button>
+          </div>
+        </div>
+      </section>
+
+      <aside class="w-full md:w-72 bg-slate-50 p-4 border-t md:border-t-0 flex flex-col flex-shrink-0 overflow-y-auto">
+        <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3">Palette</h3>
+        <div id="paletteGrid" class="grid grid-cols-5 gap-1.5 mb-4"></div>
+      </aside>
+    </main>
+  </div>
+
+  <!-- Score Modal -->
+  <div id="scoreModal"
+    class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100">
+      <h2 class="text-xl font-black text-slate-900 mb-1">Score Breakdown</h2>
+      <p class="text-xs text-slate-500 mb-4">Calculated securely on the server.</p>
+
+      <div class="grid grid-cols-3 gap-2 mb-4 text-center">
+        <div class="bg-indigo-50 p-3 rounded-xl"><span class="text-[10px] font-bold text-indigo-500">SCORE</span>
+          <p id="resScore" class="text-xl font-black text-indigo-900">0</p>
+        </div>
+        <div class="bg-emerald-50 p-3 rounded-xl"><span class="text-[10px] font-bold text-emerald-500">CORRECT</span>
+          <p id="resCorrect" class="text-xl font-black text-emerald-900">0</p>
+        </div>
+        <div class="bg-red-50 p-3 rounded-xl"><span class="text-[10px] font-bold text-red-500">WRONG</span>
+          <p id="resIncorrect" class="text-xl font-black text-red-900">0</p>
+        </div>
+      </div>
+
+      <div id="resSubjectList" class="space-y-1.5 text-xs mb-4"></div>
+      <button onclick="returnHome()" class="w-full bg-slate-900 text-white font-bold py-2.5 rounded-xl text-xs">Return
+        to Home</button>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = "https://bodh-backend-6g1l.onrender.com";
+    let currentUser = null;
+    let examData = { questions: [] };
+    let currentIndex = 0;
+    let userResponses = {}; // { question_id: "A" }
+    let timerInterval = null;
+    let timeRemaining = 0;
+
+    // --- Authentication Simulation ---
+    function mockLogin() {
+      currentUser = { name: "IIT Aspirant", email: "student@example.com" };
+      document.getElementById('loggedOutUI').classList.add('hidden');
+      document.getElementById('loggedInUI').classList.remove('hidden');
+      document.getElementById('loggedInUI').classList.add('flex');
+      document.getElementById('userName').textContent = currentUser.name;
+
+      document.getElementById('optAllSubjects').disabled = false;
+      document.getElementById('optAllSubjects').textContent = "Full Paper (All Subjects)";
+      document.getElementById('advancedFilters').classList.remove('opacity-40', 'pointer-events-none');
+      document.getElementById('lockedConfigNotice').classList.add('hidden');
+      document.getElementById('startBtn').textContent = "Start Full Exam Simulation";
+      document.getElementById('watermark').textContent = currentUser.email;
+    }
+
+    function mockLogout() {
+      currentUser = null;
+      document.getElementById('loggedInUI').classList.add('hidden');
+      document.getElementById('loggedInUI').classList.remove('flex');
+      document.getElementById('loggedOutUI').classList.remove('hidden');
+      document.getElementById('optAllSubjects').disabled = true;
+      document.getElementById('optAllSubjects').textContent = "Full Paper (All Subjects) - Login Required";
+      document.getElementById('advancedFilters').classList.add('opacity-40', 'pointer-events-none');
+      document.getElementById('lockedConfigNotice').classList.remove('hidden');
+      document.getElementById('startBtn').textContent = "Start Free Practice (30 Mins)";
+      document.getElementById('watermark').textContent = "Guest Candidate";
+    }
+
+    // --- Start Test Router ---
+    async function handleStartTest() {
+      const subject = document.getElementById('configSubject').value;
+      let url = "";
+
+      if (!currentUser) {
+        url = `${API_BASE}/api/exam/guest-test?subject=${subject}`;
+      } else {
+        const year = document.getElementById('configYear').value;
+        const paperNum = document.getElementById('configPaperNum').value;
+        url = `${API_BASE}/api/exam/full-test?year=${year}&paper_number=${paperNum}&subject=${subject}`;
+      }
+
+      try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error("Failed to load test payload.");
+        examData = await res.json();
+
+        initTestView();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    function initTestView() {
+      document.getElementById('homeView').classList.add('hidden');
+      document.getElementById('testView').classList.remove('hidden');
+      document.getElementById('testView').classList.add('flex');
+
+      document.getElementById('examTitle').textContent = examData.title;
+      timeRemaining = examData.duration_seconds;
+      currentIndex = 0;
+      userResponses = {};
+
+      loadQuestion(0);
+      startTimer();
+    }
+
+    function loadQuestion(idx) {
+      currentIndex = idx;
+      const q = examData.questions[idx];
+
+      document.getElementById('qNumberBadge').textContent = `Q${idx + 1}`;
+      document.getElementById('qTypeBadge').textContent = q.question_type;
+      document.getElementById('markingSchemeBadge').textContent = `+${q.positive_marks} / ${q.negative_marks}`;
+      document.getElementById('questionText').innerHTML = formatMathText(q.question_text);
+
+      // --- Diagram Handling (Prevents flashing previous image) ---
+      const diagramBox = document.getElementById('diagramContainer');
+      const diagramImg = document.getElementById('diagramImage');
+
+      diagramBox.classList.add('hidden');
+      diagramImg.onload = null;
+      diagramImg.onerror = null;
+      diagramImg.removeAttribute('src');
+
+      if (q.has_diagram && q.diagram_url) {
+        diagramImg.onload = () => {
+          if (examData.questions[currentIndex]?.diagram_url === q.diagram_url) {
+            diagramBox.classList.remove('hidden');
+          }
+        };
+        diagramImg.onerror = () => {
+          diagramBox.classList.add('hidden');
+        };
+        diagramImg.src = q.diagram_url;
+      }
+
+      // --- Options, Palette, & Math Re-render ---
+      renderInteractionArea(q);
+      renderPalette();
+      renderMath();
+    }
+
+    function renderInteractionArea(q) {
+      const area = document.getElementById('interactionArea');
+      area.innerHTML = '';
+      const savedAns = userResponses[q.id] || '';
+
+      if (q.question_type === 'Numerical') {
+        area.innerHTML = `
+          <input type="number" step="any" value="${savedAns}" oninput="handleNumericalInput(${q.id}, this.value)"
+                 placeholder="Enter numerical answer..." class="w-full max-w-xs border border-slate-300 rounded-lg p-2.5 text-sm font-mono outline-none focus:ring-2 focus:ring-indigo-500">
+        `;
+      } else {
+        const isMulti = q.question_type === 'Multiple Correct';
+        const opts = [{ k: 'A', v: q.option_a }, { k: 'B', v: q.option_b }, { k: 'C', v: q.option_c }, { k: 'D', v: q.option_d }];
+
+        opts.forEach(opt => {
+          if (!opt.v) return;
+          const isSelected = isMulti ? savedAns.split(',').includes(opt.k) : savedAns === opt.k;
+          const div = document.createElement('div');
+          div.className = `border rounded-lg p-3 flex items-start gap-3 cursor-pointer transition text-xs ${isSelected ? 'border-indigo-600 bg-indigo-50/50' : 'border-slate-200 hover:bg-slate-50'}`;
+          div.onclick = () => handleOptionClick(q.id, opt.k, isMulti);
+          div.innerHTML = `<span class="w-5 h-5 rounded-full flex items-center justify-center font-bold ${isSelected ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-700'}">${opt.k}</span><div>${formatMathText(opt.v)}</div>`;
+          area.appendChild(div);
+        });
+      }
+    }
+
+    function handleOptionClick(qId, key, isMulti) {
+      if (isMulti) {
+        let cur = userResponses[qId] ? userResponses[qId].split(',').filter(Boolean) : [];
+        cur = cur.includes(key) ? cur.filter(x => x !== key) : [...cur, key];
+        cur.sort();
+        userResponses[qId] = cur.join(',');
+      } else {
+        userResponses[qId] = key;
+      }
+      renderInteractionArea(examData.questions[currentIndex]);
+      renderPalette();
+      renderMath();
+    }
+
+    function handleNumericalInput(qId, val) {
+      userResponses[qId] = val.trim();
+      renderPalette();
+    }
+
+    function clearResponse() {
+      delete userResponses[examData.questions[currentIndex].id];
+      renderInteractionArea(examData.questions[currentIndex]);
+      renderPalette();
+    }
+
+    function navigateQuestion(step) {
+      const target = currentIndex + step;
+      if (target >= 0 && target < examData.questions.length) loadQuestion(target);
+    }
+
+    function renderPalette() {
+      const grid = document.getElementById('paletteGrid');
+      grid.innerHTML = '';
+      examData.questions.forEach((q, idx) => {
+        const hasAnswer = userResponses[q.id] !== undefined && userResponses[q.id] !== '';
+        const btn = document.createElement('button');
+        btn.className = `h-7 rounded text-[11px] font-bold ${hasAnswer ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-700'} ${idx === currentIndex ? 'ring-2 ring-indigo-600' : ''}`;
+        btn.textContent = idx + 1;
+        btn.onclick = () => loadQuestion(idx);
+        grid.appendChild(btn);
+      });
+    }
+
+    function startTimer() {
+      clearInterval(timerInterval);
+      timerInterval = setInterval(() => {
+        if (timeRemaining <= 0) {
+          clearInterval(timerInterval);
+          submitExam();
+          return;
+        }
+        timeRemaining--;
+        const m = Math.floor(timeRemaining / 60);
+        const s = timeRemaining % 60;
+        document.getElementById('timerDisplay').textContent = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+      }, 1000);
+    }
+
+    async function submitExam() {
+      clearInterval(timerInterval);
+      try {
+        const res = await fetch(`${API_BASE}/api/exam/evaluate`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ responses: userResponses })
+        });
+        const result = await res.json();
+
+        document.getElementById('resScore').textContent = result.total_score;
+        document.getElementById('resCorrect').textContent = result.correct;
+        document.getElementById('resIncorrect').textContent = result.incorrect;
+
+        const list = document.getElementById('resSubjectList');
+        list.innerHTML = Object.entries(result.subject_scores).map(([s, stat]) => `
+          <div class="flex justify-between p-2 bg-slate-50 rounded border"><span>${s}</span><b>${stat.score} pts</b></div>
+        `).join('');
+
+        document.getElementById('scoreModal').classList.remove('hidden');
+      } catch (err) {
+        alert("Failed to submit exam: " + err.message);
+      }
+    }
+
+    function returnHome() {
+      document.getElementById('scoreModal').classList.add('hidden');
+      document.getElementById('testView').classList.add('hidden');
+      document.getElementById('testView').classList.remove('flex');
+      document.getElementById('homeView').classList.remove('hidden');
+    }
+
+    function renderMath() {
+      const target = document.getElementById('testView');
+      if (window.renderMathInElement && target) {
+        renderMathInElement(target, {
+          delimiters: [
+            { left: '$$', right: '$$', display: true },
+            { left: '$', right: '$', display: false },
+            { left: '\\(', right: '\\)', display: false },
+            { left: '\\[', right: '\\]', display: true }
+          ],
+          throwOnError: false,
+          errorColor: '#d97706'
+        });
+      } else {
+        setTimeout(renderMath, 100);
+      }
+    }
+
+    function formatMathText(str) {
+      if (!str) return '';
+      let text = String(str);
+
+      const placeholders = [];
+      const savePlaceholder = (match) => {
+        placeholders.push(match);
+        return `@@MATH_PLACEHOLDER_${placeholders.length - 1}@@`;
+      };
+
+      // 1. Isolate pre-existing display & inline math blocks
+      text = text.replace(/\$\$[\s\S]*?\$\$/g, savePlaceholder);
+      text = text.replace(/\\\[[\s\S]*?\\\]/g, savePlaceholder);
+      text = text.replace(/\$([^\$\n\r]+?)\$/g, savePlaceholder);
+      text = text.replace(/\\\([\s\S]*?\\\)/g, savePlaceholder);
+
+      // 2. Wrap naked LaTeX environments (arrays, matrices, systems) in display delimiters
+      text = text.replace(/\\begin\{(array|matrix|pmatrix|bmatrix|vmatrix|Vmatrix|aligned|align\*?|cases|gather\*?)\}[\s\S]*?\\end\{\1\}/g, function (match) {
+        return savePlaceholder('$$' + match + '$$');
+      });
+
+      // 3. Wrap naked standalone \ce{...} chemistry equations
+      text = text.replace(/\\ce\{[^}]+\}/g, function (match) {
+        return savePlaceholder('$' + match + '$');
+      });
+
+      // 4. Safely escape HTML characters on actual text without touching math syntax
+      text = text.replace(/&/g, '&amp;')
+                 .replace(/</g, '&lt;')
+                 .replace(/>/g, '&gt;');
+
+      // 5. Restore original and wrapped math blocks intact
+      text = text.replace(/@@MATH_PLACEHOLDER_(\d+)@@/g, function (_, id) {
+        return placeholders[parseInt(id, 10)];
+      });
+
+      return text;
+    }
+  </script>
+</body>
+
+</html>
